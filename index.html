@@ -133,6 +133,7 @@
             const [activeTab, setActiveTab] = useState('trades');
             const [selectedArchivedTrade, setSelectedArchivedTrade] = useState(null);
             const [confirmArchiveTrade, setConfirmArchiveTrade] = useState(null);
+            const [confirmDeleteArchive, setConfirmDeleteArchive] = useState(false); // Yeni: Silme onayı state'i
             const [tempSellPrice, setTempSellPrice] = useState({});
             
             const [trades, setTrades] = useState(() => {
@@ -210,6 +211,13 @@
                 setArchive([confirmArchiveTrade, ...archive]);
                 setTrades(prev => prev.filter(t => t.id !== confirmArchiveTrade.id));
                 setConfirmArchiveTrade(null);
+            };
+
+            const handleDeleteArchive = () => {
+                if (!selectedArchivedTrade) return;
+                setArchive(archive.filter(x => x.id !== selectedArchivedTrade.id));
+                setSelectedArchivedTrade(null);
+                setConfirmDeleteArchive(false);
             };
 
             const FormatCurrency = (val) => {
@@ -337,7 +345,7 @@
                         )}
                     </div>
 
-                    {/* Onay Diyaloğu */}
+                    {/* Arşivleme Onay Diyaloğu */}
                     {confirmArchiveTrade && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/80 backdrop-blur-md">
                             <div className="bg-[#1c1c1e] w-full max-w-xs rounded-[14px] overflow-hidden border border-white/10 shadow-2xl">
@@ -348,6 +356,23 @@
                                 <div className="flex border-t border-white/10">
                                     <button onClick={() => setConfirmArchiveTrade(null)} className="flex-1 py-3 text-[17px] text-blue-500 border-r border-white/10 active:bg-white/5">İptal</button>
                                     <button onClick={finalizeArchive} className="flex-1 py-3 text-[17px] text-blue-500 font-bold active:bg-white/5">Onayla</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Arşivden SİLME Onay Diyaloğu (Yeni) */}
+                    {confirmDeleteArchive && (
+                        <div className="fixed inset-0 z-[120] flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm">
+                            <div className="bg-[#1c1c1e] w-full max-w-xs rounded-[14px] overflow-hidden border border-red-500/20 shadow-2xl">
+                                <div className="p-5 text-center">
+                                    <Icon name="alert-triangle" size={32} className="text-red-500 mx-auto mb-3" />
+                                    <h3 className="text-[17px] font-bold mb-1">Kaydı Sil?</h3>
+                                    <p className="text-[13px] text-gray-300 leading-tight">Bu işlem geri alınamaz. Arşiv kaydı kalıcı olarak silinecektir.</p>
+                                </div>
+                                <div className="flex border-t border-white/10">
+                                    <button onClick={() => setConfirmDeleteArchive(false)} className="flex-1 py-3 text-[17px] text-blue-500 border-r border-white/10 active:bg-white/5">Vazgeç</button>
+                                    <button onClick={handleDeleteArchive} className="flex-1 py-3 text-[17px] text-red-500 font-bold active:bg-white/5">SİL</button>
                                 </div>
                             </div>
                         </div>
@@ -387,10 +412,7 @@
 
                                 <div className="pt-4">
                                     <button 
-                                        onClick={() => { 
-                                            setArchive(archive.filter(x => x.id !== selectedArchivedTrade.id)); 
-                                            setSelectedArchivedTrade(null); 
-                                        }} 
+                                        onClick={() => setConfirmDeleteArchive(true)} 
                                         className="w-full h-14 bg-red-500/10 text-red-500 font-bold rounded-2xl ios-btn uppercase text-xs tracking-widest border border-red-500/20"
                                     >
                                         Kaydı Arşivden Tamamen Sil
