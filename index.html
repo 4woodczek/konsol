@@ -133,7 +133,7 @@
             const [activeTab, setActiveTab] = useState('trades');
             const [selectedArchivedTrade, setSelectedArchivedTrade] = useState(null);
             const [confirmArchiveTrade, setConfirmArchiveTrade] = useState(null);
-            const [confirmDeleteArchive, setConfirmDeleteArchive] = useState(false); // Yeni: Silme onayı state'i
+            const [confirmDeleteArchive, setConfirmDeleteArchive] = useState(false);
             const [tempSellPrice, setTempSellPrice] = useState({});
             
             const [trades, setTrades] = useState(() => {
@@ -337,7 +337,7 @@
                                     <div className="space-y-3 pt-4 border-t border-white/10 text-left">
                                         <SummaryRow label="İLAY BES" percent="40" val={lifetimeTotalProfit * 0.4} color="text-green-400" icon="heart" f={FormatCurrency}/>
                                         <SummaryRow label="DOLAR" percent="20" val={lifetimeTotalProfit * 0.2} color="text-blue-400" icon="globe" f={FormatCurrency}/>
-                                        <SummaryRow label="TAKVİM" percent="30" val={lifetimeTotalProfit * 0.3} color="text-purple-400" icon="calendar" f={FormatCurrency}/>
+                                        <SummaryRow label="HİSSE" percent="30" val={lifetimeTotalProfit * 0.3} color="text-purple-400" icon="trending-up" f={FormatCurrency}/>
                                         <SummaryRow label="KOMİSYON" percent="10" val={lifetimeTotalProfit * 0.1} color="text-amber-400" icon="scissors" f={FormatCurrency}/>
                                     </div>
                                 </div>
@@ -361,7 +361,7 @@
                         </div>
                     )}
 
-                    {/* Arşivden SİLME Onay Diyaloğu (Yeni) */}
+                    {/* Arşivden SİLME Onay Diyaloğu */}
                     {confirmDeleteArchive && (
                         <div className="fixed inset-0 z-[120] flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm">
                             <div className="bg-[#1c1c1e] w-full max-w-xs rounded-[14px] overflow-hidden border border-red-500/20 shadow-2xl">
@@ -406,7 +406,7 @@
                                 <div className="grid grid-cols-2 gap-3">
                                     <DetailItem l="İLAY BES (40%)" v={selectedArchivedTrade.profit * 0.4} f={FormatCurrency} c="text-green-400" />
                                     <DetailItem l="DOLAR (20%)" v={selectedArchivedTrade.profit * 0.2} f={FormatCurrency} c="text-blue-400" />
-                                    <DetailItem l="TAKVİM (30%)" v={selectedArchivedTrade.profit * 0.3} f={FormatCurrency} c="text-purple-400" />
+                                    <DetailItem l="HİSSE (30%)" v={selectedArchivedTrade.profit * 0.3} f={FormatCurrency} c="text-purple-400" />
                                     <DetailItem l="KOMİSYON (10%)" v={selectedArchivedTrade.profit * 0.1} f={FormatCurrency} c="text-amber-400" />
                                 </div>
 
