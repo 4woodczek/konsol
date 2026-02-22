@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Halka Arz Dağıtım</title>
+    <!-- Apple Mobile Web App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Konsol">
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/lucide-static@0.321.0/font/lucide.min.css" rel="stylesheet">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        :root {
+            --ios-bg: #000000;
+            --ios-card: rgba(28, 28, 30, 0.75);
+            --ios-blue: #007AFF;
+            --ios-green: #34C759;
+            --ios-amber: #FF9F0A;
+            --ios-red: #FF3B30;
+            --ios-gray: #8E8E93;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--ios-bg);
+            color: white;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            overflow-x: hidden;
+            letter-spacing: -0.022em;
+        }
+
+        .safe-pt { padding-top: env(safe-area-inset-top); }
+        .safe-pb { padding-bottom: env(safe-area-inset-bottom); }
+
+        .ios-blur {
+            background: rgba(30, 30, 32, 0.9);
+            backdrop-filter: saturate(180%) blur(25px);
+            -webkit-backdrop-filter: saturate(180%) blur(25px);
+        }
+
+        .ios-card {
+            background: var(--ios-card);
+            border-radius: 20px;
+            border: 0.5px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .segmented-control {
+            background: rgba(118, 118, 128, 0.24);
+            border-radius: 10px;
+            padding: 2px;
+            position: sticky;
+            top: env(safe-area-inset-top);
+            z-index: 40;
+        }
+
+        .segmented-item {
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .segmented-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+            color: white !important;
+        }
+
+        .ios-btn {
+            border-radius: 12px;
+            font-weight: 600;
+            transition: transform 0.1s ease, opacity 0.1s ease;
+        }
+
+        .ios-btn:active {
+            transform: scale(0.96);
+            opacity: 0.8;
+        }
+
+        .ios-input {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 17px;
+            outline: none;
+        }
+
+        .large-title {
+            font-size: 34px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .section-header {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--ios-gray);
+            text-transform: uppercase;
+            margin-left: 8px;
+            margin-bottom: 8px;
+        }
+
+        .slide-up {
+            animation: slideUp 0.3s cubic-bezier(0.1, 0.7, 0.1, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0.5; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const Icon = ({ name, size = 24, className = "" }) => {
+            return <i className={`lucide-${name} ${className}`} style={{ fontSize: size }}></i>;
+        };
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('trades');
+            const [selectedArchivedTrade, setSelectedArchivedTrade] = useState(null);
+            const [confirmArchiveTrade, setConfirmArchiveTrade] = useState(null);
+            const [tempSellPrice, setTempSellPrice] = useState({});
+            
+            const [trades, setTrades] = useState(() => {
+                const saved = localStorage.getItem('konsol_trades');
+                return saved ? JSON.parse(saved) : [];
+            });
+
+            const [archive, setArchive] = useState(() => {
+                const saved = localStorage.getItem('konsol_archive');
+                return saved ? JSON.parse(saved) : [];
+            });
+
+            const [newTrade, setNewTrade] = useState({ name: '', buyPrice: '', sellPrice: '', amount: '' });
+
+            useEffect(() => {
+                localStorage.setItem('konsol_trades', JSON.stringify(trades));
+            }, [trades]);
+
+            useEffect(() => {
+                localStorage.setItem('konsol_archive', JSON.stringify(archive));
+            }, [archive]);
+
+            const activeSoldProfit = trades.reduce((acc, trade) => acc + (trade.status === 'sold' ? trade.profit : 0), 0);
+            const archivedProfit = archive.reduce((acc, trade) => acc + trade.profit, 0);
+            const lifetimeTotalProfit = activeSoldProfit + archivedProfit;
+
+            const addTrade = (e) => {
+                e.preventDefault();
+                const bPrice = parseFloat(newTrade.buyPrice);
+                const sPrice = newTrade.sellPrice === '' ? null : parseFloat(newTrade.sellPrice);
+                const amt = parseInt(newTrade.amount);
+                
+                if (!newTrade.name || isNaN(bPrice) || isNaN(amt)) return;
+
+                let profit = 0, percent = 0, status = 'holding';
+                if (sPrice !== null) {
+                    profit = (sPrice - bPrice) * amt;
+                    percent = (((sPrice - bPrice) / bPrice) * 100).toFixed(1);
+                    status = 'sold';
+                }
+
+                const tradeEntry = {
+                    id: Date.now(),
+                    name: newTrade.name.toUpperCase(),
+                    buyPrice: bPrice,
+                    sellPrice: sPrice,
+                    amount: amt,
+                    profit: profit,
+                    percent: percent,
+                    date: new Date().toLocaleDateString('tr-TR'),
+                    status: status
+                };
+
+                setTrades([tradeEntry, ...trades]);
+                setNewTrade({ name: '', buyPrice: '', sellPrice: '', amount: '' });
+            };
+
+            const sellHolding = (id) => {
+                const sPrice = parseFloat(tempSellPrice[id]);
+                if (isNaN(sPrice)) return;
+
+                setTrades(prev => prev.map(t => {
+                    if (t.id === id) {
+                        const profit = (sPrice - t.buyPrice) * t.amount;
+                        const percent = (((sPrice - t.buyPrice) / t.buyPrice) * 100).toFixed(1);
+                        return { ...t, sellPrice: sPrice, profit, percent, status: 'sold' };
+                    }
+                    return t;
+                }));
+                setTempSellPrice({...tempSellPrice, [id]: ''});
+            };
+
+            const finalizeArchive = () => {
+                if (!confirmArchiveTrade) return;
+                setArchive([confirmArchiveTrade, ...archive]);
+                setTrades(prev => prev.filter(t => t.id !== confirmArchiveTrade.id));
+                setConfirmArchiveTrade(null);
+            };
+
+            const FormatCurrency = (val) => {
+                return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(val);
+            };
+
+            return (
+                <div className="min-h-screen pb-12 safe-pb">
+                    <div className="max-w-md mx-auto px-4 safe-pt">
+                        
+                        <header className="pt-8 pb-4 px-1 flex justify-between items-end">
+                            <div>
+                                <p className="text-[13px] font-semibold text-blue-500 mb-0.5">{new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                <h1 className="large-title">Konsol</h1>
+                            </div>
+                            <div className="text-right pb-1">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Cari Kar</p>
+                                <p className={`text-xl font-bold ${activeSoldProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {FormatCurrency(activeSoldProfit)}
+                                </p>
+                            </div>
+                        </header>
+
+                        <div className="segmented-control flex mb-6">
+                            <button onClick={() => setActiveTab('trades')} className={`segmented-item flex-1 py-1.5 text-[13px] font-semibold transition-all ${activeTab === 'trades' ? 'active' : 'text-gray-400'}`}>Portföy</button>
+                            <button onClick={() => setActiveTab('archive')} className={`segmented-item flex-1 py-1.5 text-[13px] font-semibold transition-all ${activeTab === 'archive' ? 'active' : 'text-gray-400'}`}>Arşiv</button>
+                            <button onClick={() => setActiveTab('summary')} className={`segmented-item flex-1 py-1.5 text-[13px] font-semibold transition-all ${activeTab === 'summary' ? 'active' : 'text-gray-400'}`}>Birikim</button>
+                        </div>
+
+                        {activeTab === 'trades' && (
+                            <div className="space-y-8">
+                                <div className="ios-card p-5 space-y-4">
+                                    <h2 className="text-[12px] font-bold text-gray-500 flex items-center">
+                                        <Icon name="plus-circle" size={14} className="mr-2" /> HİSSE GİRİŞİ
+                                    </h2>
+                                    <div className="space-y-3">
+                                        <input placeholder="Hisse Adı" className="ios-input w-full font-bold uppercase" value={newTrade.name} onChange={e => setNewTrade({...newTrade, name: e.target.value})} />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <input type="number" step="0.01" placeholder="Alış ₺" className="ios-input font-bold" value={newTrade.buyPrice} onChange={e => setNewTrade({...newTrade, buyPrice: e.target.value})} />
+                                            <input type="number" step="0.01" placeholder="Satış ₺" className="ios-input font-bold" value={newTrade.sellPrice} onChange={e => setNewTrade({...newTrade, sellPrice: e.target.value})} />
+                                        </div>
+                                        <input type="number" placeholder="Lot" className="ios-input w-full font-bold" value={newTrade.amount} onChange={e => setNewTrade({...newTrade, amount: e.target.value})} />
+                                        <button onClick={addTrade} className="w-full bg-blue-600 text-white h-12 ios-btn text-[15px] shadow-lg">Portföye Al</button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <h4 className="section-header">Aktif Portföy</h4>
+                                    {trades.length === 0 ? (
+                                        <p className="text-center py-10 text-gray-600 text-sm">Portföyünüz şu an boş.</p>
+                                    ) : (
+                                        trades.map(t => (
+                                            <div key={t.id} className="ios-card p-4 flex flex-col space-y-4">
+                                                <div className="flex justify-between items-center">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.status === 'holding' ? 'bg-amber-500/10 text-amber-500' : 'bg-green-500/10 text-green-400'}`}>
+                                                            <Icon name={t.status === 'holding' ? "clock" : "check"} size={20} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-[17px]">{t.name}</p>
+                                                            <p className="text-[12px] text-gray-500 font-medium">{t.amount} Lot • {FormatCurrency(t.buyPrice)}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        {t.status === 'holding' ? (
+                                                            <span className="text-[10px] font-bold text-amber-500 uppercase">ELDE</span>
+                                                        ) : (
+                                                            <>
+                                                                <p className="font-bold text-[17px] text-green-400">{FormatCurrency(t.profit)}</p>
+                                                                <p className="text-[11px] font-bold text-gray-500">%{t.percent}</p>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {t.status === 'holding' ? (
+                                                    <div className="flex space-x-2 border-t border-white/5 pt-4">
+                                                        <input type="number" placeholder="Satış Fiyatı" className="flex-1 ios-input h-10 text-sm" value={tempSellPrice[t.id] || ''} onChange={e => setTempSellPrice({...tempSellPrice, [t.id]: e.target.value})} />
+                                                        <button onClick={() => sellHolding(t.id)} className="px-6 bg-amber-600 ios-btn text-[13px]">SAT</button>
+                                                    </div>
+                                                ) : (
+                                                    <button onClick={() => setConfirmArchiveTrade(t)} className="w-full py-3 ios-btn bg-white/5 text-blue-400 text-[12px] border border-blue-500/20">
+                                                        Kar Dağıtımı & Arşivle
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'archive' && (
+                            <div className="space-y-3">
+                                <h4 className="section-header">Arşivlenen İşlemler</h4>
+                                {archive.length === 0 ? (
+                                    <p className="text-center py-20 text-gray-600 font-medium italic">Henüz arşivlenmiş işlem yok.</p>
+                                ) : (
+                                    archive.map(t => (
+                                        <div key={t.id} onClick={() => setSelectedArchivedTrade(t)} className="ios-card p-4 flex justify-between items-center ios-btn">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-gray-400"><Icon name="archive" size={18} /></div>
+                                                <div><p className="font-bold text-[16px]">{t.name}</p><p className="text-[11px] text-gray-500">{t.date}</p></div>
+                                            </div>
+                                            <div className="flex items-center space-x-2"><span className="font-bold text-green-400">{FormatCurrency(t.profit)}</span><Icon name="chevron-right" size={16} className="text-gray-700" /></div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'summary' && (
+                            <div className="space-y-6">
+                                <div className="ios-card p-8 text-center">
+                                    <p className="text-[13px] font-bold text-gray-500 uppercase tracking-widest mb-1">TOPLAM BİRİKİM</p>
+                                    <p className="text-5xl font-extrabold text-white tracking-tighter mb-8">{FormatCurrency(lifetimeTotalProfit)}</p>
+                                    <div className="space-y-3 pt-4 border-t border-white/10 text-left">
+                                        <SummaryRow label="İLAY BES" percent="40" val={lifetimeTotalProfit * 0.4} color="text-green-400" icon="heart" f={FormatCurrency}/>
+                                        <SummaryRow label="DOLAR" percent="20" val={lifetimeTotalProfit * 0.2} color="text-blue-400" icon="globe" f={FormatCurrency}/>
+                                        <SummaryRow label="TAKVİM" percent="30" val={lifetimeTotalProfit * 0.3} color="text-purple-400" icon="calendar" f={FormatCurrency}/>
+                                        <SummaryRow label="KOMİSYON" percent="10" val={lifetimeTotalProfit * 0.1} color="text-amber-400" icon="scissors" f={FormatCurrency}/>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Onay Diyaloğu */}
+                    {confirmArchiveTrade && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/80 backdrop-blur-md">
+                            <div className="bg-[#1c1c1e] w-full max-w-xs rounded-[14px] overflow-hidden border border-white/10 shadow-2xl">
+                                <div className="p-5 text-center">
+                                    <h3 className="text-[17px] font-bold mb-1">Arşivle</h3>
+                                    <p className="text-[13px] text-gray-300 leading-tight">Bu hisse karını dağıtım havuzuna aktarmak istediğinizden emin misiniz?</p>
+                                </div>
+                                <div className="flex border-t border-white/10">
+                                    <button onClick={() => setConfirmArchiveTrade(null)} className="flex-1 py-3 text-[17px] text-blue-500 border-r border-white/10 active:bg-white/5">İptal</button>
+                                    <button onClick={finalizeArchive} className="flex-1 py-3 text-[17px] text-blue-500 font-bold active:bg-white/5">Onayla</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Detay Paneli */}
+                    {selectedArchivedTrade && (
+                        <div className="fixed inset-0 z-[110] flex items-end justify-center">
+                            {/* Koyu Arka Plan */}
+                            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedArchivedTrade(null)}></div>
+                            
+                            {/* Panel */}
+                            <div className="bg-[#1c1c1e] w-full max-w-md rounded-t-[25px] p-6 pb-14 space-y-6 slide-up border-t border-white/20 ios-blur relative shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+                                <div className="w-12 h-1.5 bg-gray-600 rounded-full mx-auto mb-2 opacity-50"></div>
+                                
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <h2 className="text-3xl font-extrabold tracking-tight">{selectedArchivedTrade.name}</h2>
+                                        <p className="text-gray-500 text-xs font-semibold">{selectedArchivedTrade.date} Tarihli İşlem</p>
+                                    </div>
+                                    <button onClick={() => setSelectedArchivedTrade(null)} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white active:bg-white/20">
+                                        <Icon name="x" size={20}/>
+                                    </button>
+                                </div>
+
+                                <div className="bg-black/40 rounded-2xl p-6 text-center border border-white/5">
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">DAĞITILAN NET KAR</p>
+                                    <p className="text-4xl font-black text-green-400">{FormatCurrency(selectedArchivedTrade.profit)}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <DetailItem l="İLAY BES (40%)" v={selectedArchivedTrade.profit * 0.4} f={FormatCurrency} c="text-green-400" />
+                                    <DetailItem l="DOLAR (20%)" v={selectedArchivedTrade.profit * 0.2} f={FormatCurrency} c="text-blue-400" />
+                                    <DetailItem l="TAKVİM (30%)" v={selectedArchivedTrade.profit * 0.3} f={FormatCurrency} c="text-purple-400" />
+                                    <DetailItem l="KOMİSYON (10%)" v={selectedArchivedTrade.profit * 0.1} f={FormatCurrency} c="text-amber-400" />
+                                </div>
+
+                                <div className="pt-4">
+                                    <button 
+                                        onClick={() => { 
+                                            setArchive(archive.filter(x => x.id !== selectedArchivedTrade.id)); 
+                                            setSelectedArchivedTrade(null); 
+                                        }} 
+                                        className="w-full h-14 bg-red-500/10 text-red-500 font-bold rounded-2xl ios-btn uppercase text-xs tracking-widest border border-red-500/20"
+                                    >
+                                        Kaydı Arşivden Tamamen Sil
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const SummaryRow = ({ label, percent, val, color, icon, f }) => (
+            <div className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
+                <div className="flex items-center space-x-3">
+                    <div className="w-9 h-9 bg-white/5 rounded-xl flex items-center justify-center text-gray-400"><Icon name={icon} size={18}/></div>
+                    <span className="text-[15px] font-semibold text-gray-200">{label} <span className="text-[10px] text-gray-500">%{percent}</span></span>
+                </div>
+                <span className={`text-[16px] font-bold ${color}`}>{f(val)}</span>
+            </div>
+        );
+
+        const DetailItem = ({ l, v, f, c }) => (
+            <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                <p className="text-[9px] font-bold text-gray-500 uppercase mb-1 tracking-tight">{l}</p>
+                <p className={`font-bold text-[16px] ${c}`}>{f(v)}</p>
+            </div>
+        );
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
